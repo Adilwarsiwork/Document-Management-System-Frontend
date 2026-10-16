@@ -2,15 +2,18 @@ import { apiClient } from "../../../services/api-client";
 
 import type {
   GenerateOtpRequest,
-  OtpResponse,
+  GenerateOtpResponse,
   ValidateOtpRequest,
   ValidateOtpResponse,
 } from "../types/auth.types";
 
 export async function generateOtp(
   payload: GenerateOtpRequest,
-): Promise<OtpResponse> {
-  const { data } = await apiClient.post<OtpResponse>("/generateOTP", payload);
+): Promise<GenerateOtpResponse> {
+  const { data } = await apiClient.post<GenerateOtpResponse>(
+    "/generateOTP",
+    payload,
+  );
 
   return data;
 }

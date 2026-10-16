@@ -7,7 +7,7 @@ export interface ValidateOtpRequest {
   otp: string;
 }
 
-export interface OtpResponse {
+export interface GenerateOtpResponse {
   status: boolean;
   data: string;
 }
