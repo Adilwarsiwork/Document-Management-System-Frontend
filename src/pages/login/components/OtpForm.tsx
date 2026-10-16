@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { otpSchema, type OtpFormValues } from "../schemas/auth.schema";
 import { useGenerateOtp, useValidateOtp } from "../hooks/useAuth";
+import { saveAuthSession } from "../../../services/auth-session";
 import type { ValidateOtpResponse } from "../types/auth.types";
 
 interface Props {
@@ -50,7 +51,9 @@ export default function OtpForm({ mobile, onBack, onAuthenticated }: Props) {
             return;
           }
 
-          sessionStorage.setItem("dms_token", token);
+          // Store the response exactly as received.
+          saveAuthSession(response.data);
+
           onAuthenticated();
         },
       },

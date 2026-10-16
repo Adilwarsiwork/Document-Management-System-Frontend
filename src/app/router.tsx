@@ -4,9 +4,10 @@ import AppLayout from "../AppLayout";
 import LoginPage from "../pages/login/LoginPage";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import UserCreate from "../pages/user_create/UserCreate";
+import { getAuthToken } from "../services/auth-session";
 
 function ProtectedRoute() {
-  const token = sessionStorage.getItem("dms_token");
+  const token = getAuthToken();
 
   return token ? <Outlet /> : <Navigate to="/login" replace />;
 }
