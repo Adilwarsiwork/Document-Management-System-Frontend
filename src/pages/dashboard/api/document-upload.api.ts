@@ -2,9 +2,9 @@ import axios from "axios";
 
 import { apiClient } from "../../../services/api-client";
 import { getAuthUserId } from "../../../services/auth-session";
+import { toApiDate } from "../utils/date.utils";
 import type { SelectedDocument } from "../types/document.types";
 import type { DocumentUploadMetadata } from "../types/document-metadata.types";
-
 interface UploadResponse {
   status?: boolean;
   message?: string;
@@ -20,17 +20,6 @@ interface UploadMetadataPayload {
   user_id: number | string;
 }
 
-// The date input works in ISO format, but the API expects dd-MM-yyyy.
-const toApiDate = (isoDate: string): string => {
-  const trimmedDate = isoDate?.trim() ?? "";
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedDate);
-
-  if (!match) return trimmedDate;
-
-  const [, year, month, day] = match;
-
-  return `${day}-${month}-${year}`;
-};
 
 const buildMetadataPayload = (
   metadata: DocumentUploadMetadata,

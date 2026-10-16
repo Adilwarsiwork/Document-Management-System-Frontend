@@ -114,10 +114,7 @@ export default function DashboardPage() {
 
           {activeSection === "search" && (
             <section id="documents">
-              <DocumentSearchSection
-                files={files}
-                onRemoveFile={handleRemoveFile}
-              />
+              <DocumentSearchSection />
             </section>
           )}
 
