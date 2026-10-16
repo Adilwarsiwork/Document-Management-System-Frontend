@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { AlertTriangle, ArrowRight, CheckCircle2, Lightbulb, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Lightbulb,
+  X,
+} from "lucide-react";
 
 export type ToastVariant = "success" | "error";
 
@@ -25,9 +31,6 @@ interface ToastProps {
   onClose: (id: string) => void;
 }
 
-// Success is informational and clears itself; errors need a deliberate close.
-const AUTO_DISMISS_MS = 5000;
-
 const sectionLabelClass =
   "text-[11px] font-bold uppercase tracking-wider text-slate-400";
 
@@ -35,15 +38,7 @@ export default function Toast({ toast, onClose }: ToastProps) {
   const { id, variant, title, message, hint, meta } = toast;
   const isSuccess = variant === "success";
 
-  useEffect(() => {
-    if (!isSuccess) return;
-
-    const timer = window.setTimeout(() => onClose(id), AUTO_DISMISS_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [isSuccess, onClose, id]);
-
-  // Escape always works, whichever variant is showing.
+  // Both variants wait for the user; Escape is always a way out.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose(id);
@@ -146,7 +141,9 @@ export default function Toast({ toast, onClose }: ToastProps) {
                       key={label}
                       className="flex items-center justify-between gap-4 py-3"
                     >
-                      <dt className="shrink-0 text-sm text-slate-500">{label}</dt>
+                      <dt className="shrink-0 text-sm text-slate-500">
+                        {label}
+                      </dt>
                       <dd className="min-w-0 truncate text-right text-sm font-semibold text-slate-800">
                         {value}
                       </dd>
@@ -172,19 +169,6 @@ export default function Toast({ toast, onClose }: ToastProps) {
             {isSuccess ? "Done" : "Close"}
           </button>
         </div>
-
-        {/* Counts down the remaining time before a success popup clears itself. */}
-        {isSuccess && (
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 h-1 bg-slate-100"
-          >
-            <div
-              className="animate-toast-progress h-full w-full origin-left bg-indigo-500"
-              style={{ animationDuration: `${AUTO_DISMISS_MS}ms` }}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

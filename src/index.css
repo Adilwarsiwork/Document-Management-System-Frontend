@@ -50,17 +50,6 @@ button {
   }
 }
 
-/* Uses scaleX rather than width so the bar stays on the compositor. */
-@keyframes toast-progress {
-  from {
-    transform: scaleX(1);
-  }
-
-  to {
-    transform: scaleX(0);
-  }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .animate-toast-in {
     animation: toast-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -68,10 +57,6 @@ button {
 
   .animate-toast-backdrop {
     animation: toast-backdrop-in 200ms ease-out both;
-  }
-
-  .animate-toast-progress {
-    animation: toast-progress linear forwards;
   }
 }
 
