@@ -2,6 +2,22 @@ import type { Role } from "../pages/login/types/auth.types";
 
 const SESSION_KEY = "dms_session";
 
+// The route guards subscribe here so a sign-in or sign-out is reflected
+// immediately, instead of on the next navigation.
+const sessionListeners = new Set<() => void>();
+
+export function subscribeAuthSession(listener: () => void): () => void {
+  sessionListeners.add(listener);
+
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
+
+function notifyAuthSession(): void {
+  for (const listener of sessionListeners) listener();
+}
+
 // Stores the response exactly as received: no keys added, renamed or dropped.
 export function saveAuthSession(data: unknown): void {
   try {
@@ -9,6 +25,8 @@ export function saveAuthSession(data: unknown): void {
   } catch {
     // Storage can be unavailable in private browsing; keep the app usable.
   }
+
+  notifyAuthSession();
 }
 
 // Returns the raw payload the server sent, or an empty object.
@@ -32,6 +50,8 @@ export function readAuthSession(): Record<string, unknown> {
 
 export function clearAuthSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
+
+  notifyAuthSession();
 }
 
 const readString = (key: string): string => {
