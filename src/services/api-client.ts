@@ -23,3 +23,14 @@ apiClient.interceptors.request.use((config) => {
 
   return config;
 });
+
+// Reads the message the API sends back on a failed request.
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (!axios.isAxiosError(error)) {
+    return error instanceof Error ? error.message : fallback;
+  }
+
+  const data = error.response?.data as { message?: string } | undefined;
+
+  return data?.message || fallback;
+}
