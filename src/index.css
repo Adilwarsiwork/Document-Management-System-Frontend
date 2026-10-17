@@ -1,5 +1,33 @@
 @import "tailwindcss";
 
+@theme {
+  /* Nunito is the app's default: it covers body copy, labels, inputs, buttons
+     and every other non-heading text. Replacing --font-sans also retargets the
+     default font Tailwind puts on <html>, so nothing has to opt in. */
+  --font-sans:
+    "Nunito", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Montserrat is reserved for headings. Tailwind emits the matching
+     `font-display` utility only once some component actually uses that class,
+     so nothing needs it while the rule below covers every heading. */
+  --font-display:
+    "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+}
+
+@layer base {
+  /* Every heading picks up Montserrat, so the face is decided by the element and
+     cannot drift as components are added or restyled. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+}
+
 html,
 body {
   max-width: 100%;
