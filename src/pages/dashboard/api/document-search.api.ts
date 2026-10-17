@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import { apiClient } from "../../../services/api-client";
-import { toApiDate } from "../utils/date.utils";
+import { toApiTimestamp } from "../utils/date.utils";
 
 import type {
   DocumentSearchFilters,
@@ -244,8 +244,8 @@ export function buildSearchRequest(
   return {
     major_head: filters.majorHead,
     minor_head: filters.minorHead,
-    from_date: toApiDate(filters.fromDate),
-    to_date: toApiDate(filters.toDate),
+    from_date: toApiTimestamp(filters.fromDate),
+    to_date: toApiTimestamp(filters.toDate),
     tags:
       filters.tags.length > 0
         ? filters.tags.map((tag) => ({ tag_name: tag }))

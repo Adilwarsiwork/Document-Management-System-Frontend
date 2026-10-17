@@ -1,4 +1,31 @@
-// Date inputs work in ISO format, but the API expects dd-MM-yyyy.
+/**
+ * Date inputs are always ISO `yyyy-mm-dd`, because their value comes straight
+ * from an `<input type="date">`.
+ *
+ * The two endpoints disagree about the wire format, so there are two converters
+ * rather than one being changed and breaking the other:
+ *
+ * - `/searchDocumentEntry` expects an ISO timestamp -> `toApiTimestamp`
+ * - `/saveDocumentEntry` expects `dd-MM-yyyy`      -> `toApiDate`
+ */
+
+// Search endpoint: 2024-02-01 -> "2024-02-01T00:00:00"
+export function toApiTimestamp(isoDate: string): string {
+  const trimmedDate = isoDate?.trim() ?? "";
+
+  // An empty filter must stay empty: the API reads "" as "no bound" and would
+  // reject a fabricated date.
+  if (!trimmedDate) return "";
+
+  // Already carries a time component; appending another would corrupt it.
+  if (trimmedDate.includes("T")) return trimmedDate;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) return trimmedDate;
+
+  return `${trimmedDate}T00:00:00`;
+}
+
+// Upload endpoint: 2024-02-01 -> "01-02-2024"
 export function toApiDate(isoDate: string): string {
   const trimmedDate = isoDate?.trim() ?? "";
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedDate);

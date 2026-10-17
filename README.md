@@ -297,8 +297,8 @@ All calls go through the Axios instance in `src/services/api-client.ts`.
 {
   "major_head": "Professional",        // category
   "minor_head": "IT",                  // sub-category / department
-  "from_date": "01-02-2024",           // dd-MM-yyyy, empty when unset
-  "to_date": "31-12-2024",             // dd-MM-yyyy
+  "from_date": "2024-02-01T00:00:00",  // ISO timestamp, "" when unset
+  "to_date": "2024-12-31T00:00:00",    // ISO timestamp, "" when unset
   "tags": [{ "tag_name": "invoice" }], // empty -> two blank placeholders
   "uploaded_by": "",
   "start": 0,                          // page * 10
@@ -308,7 +308,19 @@ All calls go through the Axios instance in `src/services/api-client.ts`.
 }
 ```
 
-Dates go **out** as `dd-MM-yyyy` and come **back** as ISO. The app converts both ways.
+### Date formats differ by endpoint
+
+The two APIs disagree here, so `utils/date.utils.ts` keeps two converters:
+
+| Endpoint | Field | Format | Example |
+| --- | --- | --- | --- |
+| `/searchDocumentEntry` | `from_date`, `to_date` | ISO timestamp | `2024-02-01T00:00:00` |
+| `/saveDocumentEntry` | `document_date` | `dd-MM-yyyy` | `01-02-2024` |
+
+Date inputs are always ISO `yyyy-mm-dd` internally (they come from
+`<input type="date">`), and each endpoint is sent the format it expects. An unset filter
+stays an empty string, which the search API reads as "no bound" — sending a fabricated
+date instead would silently narrow the results.
 
 ### Search response row
 
