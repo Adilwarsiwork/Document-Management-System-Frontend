@@ -152,7 +152,7 @@ export default function OtpForm({ mobile, onBack, onAuthenticated }: Props) {
       <button
         type="button"
         onClick={onBack}
-        className="w-full text-sm font-medium text-slate-600 hover:text-indigo-600"
+        className="w-full text-sm font-semibold text-indigo-600 transition hover:text-indigo-700"
       >
         Change mobile number
       </button>
