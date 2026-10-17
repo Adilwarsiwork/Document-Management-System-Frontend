@@ -1,7 +1,6 @@
 import axios from "axios";
 
 import { apiClient } from "../../../services/api-client";
-import { buildMockPage } from "../constants/mock-search.constants";
 import { toApiDate } from "../utils/date.utils";
 
 import type {
@@ -16,9 +15,6 @@ import type {
 const EMPTY_TAG_FILTER = [{ tag_name: "" }, { tag_name: "" }];
 
 const PAGE_SIZE = 10;
-
-// Serves the sample rows instead of the API while working on the UI.
-const USE_MOCK = import.meta.env.VITE_USE_MOCK_SEARCH === "true";
 
 export { PAGE_SIZE };
 
@@ -156,12 +152,6 @@ export async function searchDocuments(
   filters: DocumentSearchFilters,
   start = 0,
 ): Promise<DocumentSearchPage> {
-  if (USE_MOCK) {
-    await new Promise((resolve) => window.setTimeout(resolve, 350));
-
-    return buildMockPage(filters, start, PAGE_SIZE);
-  }
-
   let payload: unknown;
 
   try {
