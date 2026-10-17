@@ -1,38 +1,35 @@
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 
-import AppLayout from "../AppLayout";
 import LoginPage from "../pages/login/LoginPage";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import UserCreate from "../pages/user_create/UserCreate";
-import { getAuthToken } from "../services/auth-session";
-
-function ProtectedRoute() {
-  const token = getAuthToken();
-
-  return token ? <Outlet /> : <Navigate to="/login" replace />;
-}
-
-function MainLayout() {
-  return (
-    <AppLayout>
-      <Outlet />
-    </AppLayout>
-  );
-}
+import {
+  FallbackRoute,
+  GuestRoute,
+  MainLayout,
+  ProtectedRoute,
+} from "./route-elements";
 
 export const router = createBrowserRouter([
   {
     element: <MainLayout />,
     children: [
       {
-        path: "/login",
-        element: <LoginPage />,
+        // Login and register are reachable only while signed out.
+        element: <GuestRoute />,
+        children: [
+          {
+            path: "/login",
+            element: <LoginPage />,
+          },
+          {
+            path: "register",
+            element: <UserCreate />,
+          },
+        ],
       },
       {
-        path: "register",
-        element: <UserCreate />,
-      },
-      {
+        // Everything below needs a valid session token.
         element: <ProtectedRoute />,
         children: [
           {
@@ -45,6 +42,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to="/login" replace />,
+    element: <FallbackRoute />,
   },
 ]);

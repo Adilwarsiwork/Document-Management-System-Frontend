@@ -1,4 +1,3 @@
-import { Bell, ChevronDown } from "lucide-react";
 import { getAuthRoles, getAuthUserName } from "../../../services/auth-session";
 
 export default function DashboardHeader() {
@@ -24,14 +23,6 @@ export default function DashboardHeader() {
           Workspace active
         </div>
 
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:bg-slate-50"
-        >
-          <Bell size={18} />
-        </button>
-
         <div className="flex items-center gap-3 border-l border-slate-200 pl-3 sm:pl-5">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
             {initial}
@@ -44,7 +35,6 @@ export default function DashboardHeader() {
               {roleName || "Authenticated user"}
             </p>
           </div>
-          <ChevronDown size={15} className="hidden text-slate-400 sm:block" />
         </div>
       </div>
     </header>

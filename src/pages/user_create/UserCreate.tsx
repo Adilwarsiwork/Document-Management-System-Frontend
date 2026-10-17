@@ -106,37 +106,37 @@ export default function UserCreate() {
     "w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10";
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:py-14">
+    <main className="min-h-dvh bg-slate-50 px-4 py-6 sm:px-6 sm:py-8 lg:py-14">
       <div className="mx-auto max-w-5xl">
-        <div className="grid overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 sm:rounded-3xl lg:grid-cols-[0.85fr_1.15fr]">
           {/* Left panel */}
-          <aside className="relative flex flex-col justify-between overflow-hidden bg-linear-to-br from-indigo-700 via-indigo-600 to-violet-700 p-7 text-white sm:p-10 lg:p-12">
+          <aside className="relative flex flex-col justify-between overflow-hidden bg-linear-to-br from-indigo-700 via-indigo-600 to-violet-700 p-6 text-white sm:p-10 lg:p-12">
             <div className="absolute -right-20 -top-20 size-64 rounded-full border border-white/10" />
             <div className="absolute -right-10 -top-10 size-44 rounded-full border border-white/10" />
             <div className="absolute -bottom-24 -left-16 size-64 rounded-full bg-white/5 blur-2xl" />
 
             <div className="relative">
-              <div className="mb-8 flex size-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-lg backdrop-blur-sm">
-                <UserPlus size={27} />
+              <div className="mb-6 flex size-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-lg backdrop-blur-sm sm:mb-8 sm:size-14">
+                <UserPlus size={25} />
               </div>
 
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-200">
                 User Management
               </p>
 
-              <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+              <h1 className="mt-3 text-2xl font-bold leading-tight tracking-tight sm:mt-4 sm:text-4xl">
                 Create a new
                 <br />
                 user account.
               </h1>
 
-              <p className="mt-5 max-w-sm text-sm leading-7 text-indigo-100">
+              <p className="mt-4 max-w-sm text-sm leading-7 text-indigo-100 sm:mt-5">
                 Set up user details securely with a simple, streamlined account
                 creation experience.
               </p>
             </div>
 
-            <div className="relative mt-12 rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
+            <div className="relative mt-8 rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm sm:mt-12">
               <div className="flex items-start gap-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
                   <ShieldCheck size={21} />
@@ -352,6 +352,7 @@ export default function UserCreate() {
                 Already have an account?{" "}
                 <Link
                   to="/login"
+                  replace
                   className="font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline"
                 >
                   Login

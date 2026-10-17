@@ -56,7 +56,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] text-slate-900 md:flex">
+    <div className="min-h-dvh bg-[#f7f8fc] text-slate-900 md:flex">
       <DashboardSidebar
         activeSection={activeSection}
         onSectionChange={setActiveSection}
@@ -66,7 +66,7 @@ export default function DashboardPage() {
       <div className="min-w-0 flex-1">
         <DashboardHeader />
 
-        <main className="mx-auto max-w-7xl space-y-7 px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
+        <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-7 sm:px-6 sm:py-7 lg:px-8 lg:py-9">
           <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
             <div>
               <p className="mb-2 text-xs font-semibold tracking-wider text-indigo-600">

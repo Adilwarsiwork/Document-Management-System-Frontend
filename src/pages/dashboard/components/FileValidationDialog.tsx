@@ -24,7 +24,7 @@ export default function FileValidationDialog({
         aria-modal="true"
         aria-labelledby="file-error-title"
         aria-describedby="file-error-description"
-        className="max-h-[85vh] w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="max-h-[85dvh] w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         <div className="flex items-start gap-3 border-b border-red-100 bg-red-50/70 p-5">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
@@ -59,7 +59,7 @@ export default function FileValidationDialog({
           </button>
         </div>
 
-        <div className="max-h-[45vh] space-y-3 overflow-y-auto p-5">
+        <div className="max-h-[45dvh] space-y-3 overflow-y-auto p-5">
           {files.map((file) => (
             <div
               key={file.id}
