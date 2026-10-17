@@ -1,5 +1,7 @@
 import {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -15,6 +17,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  FileArchive,
   FileSearch,
   FolderOpen,
   FolderTree,
@@ -45,6 +48,7 @@ import {
 } from "../utils/document-display.utils";
 import {
   downloadFile,
+  downloadFilesAsZip,
   fileExtensionFromName,
   fileNameFromUrl,
   getFileIcon,
@@ -106,6 +110,15 @@ export default function DocumentSearchSection() {
   const [page, setPage] = useState(0);
   const [rangeError, setRangeError] = useState("");
 
+  // Ids rather than whole documents: a selection must survive a page change or a
+  // refetch, so storing the rows themselves would quietly discard it.
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [zipProgress, setZipProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
+  const [zipError, setZipError] = useState("");
+
   const {
     data: existingTags = [],
     isLoading: isLoadingTags,
@@ -117,7 +130,9 @@ export default function DocumentSearchSection() {
     page
   );
 
-  const documents = data?.documents ?? [];
+  // Held in a memo so the selection helpers below are not rebuilt on every
+  // render just because `data?.documents ?? []` yields a fresh array.
+  const documents = useMemo(() => data?.documents ?? [], [data]);
   const total = data?.total ?? 0;
   // The page the visible data belongs to; it lags the requested page while the
   // next one loads, so the label always matches what is on screen.
@@ -130,6 +145,84 @@ export default function DocumentSearchSection() {
   const errorMessage = isError
     ? getApiErrorMessage(error, "The search could not be completed.")
     : "";
+
+  // Rows without a file have nothing to put in an archive, so they can never be
+  // selected in the first place.
+  const downloadableIds = useMemo(
+    () => documents.filter((d) => d.fileUrl).map((d) => d.id),
+    [documents],
+  );
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    );
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+    setZipError("");
+  }, []);
+
+  // Only the documents currently loaded can be named inside the archive, so a
+  // selection made on another page is dropped rather than silently skipped.
+  const selectedDocuments = useMemo(() => {
+    const wanted = new Set(selectedIds);
+
+    return documents.filter(
+      (document) => wanted.has(document.id) && document.fileUrl,
+    );
+  }, [documents, selectedIds]);
+
+  const isZipRunning = zipProgress !== null;
+
+  const handleDownloadZip = async () => {
+    if (selectedDocuments.length === 0 || isZipRunning) return;
+
+    setZipError("");
+    setZipProgress({ completed: 0, total: selectedDocuments.length });
+
+    try {
+      const result = await downloadFilesAsZip(
+        selectedDocuments.map((document) => ({
+          id: document.id,
+          url: document.fileUrl,
+          fileName: fileNameFromUrl(document.fileUrl),
+        })),
+        setZipProgress,
+      );
+
+      // Cleared regardless of outcome, so a failed batch does not leave the
+      // toolbar stuck on a progress readout.
+      setZipProgress(null);
+
+      if (!result.archiveName) {
+        setZipError(
+          "None of the selected documents could be read. The links may have expired.",
+        );
+        return;
+      }
+
+      if (result.failures.length > 0) {
+        setZipError(
+          `${result.archiveName} was saved with ${result.failures.length} of ${selectedDocuments.length} documents missing: ${result.failures
+            .map((failure) => failure.fileName || "unnamed file")
+            .join(", ")}.`,
+        );
+      }
+
+      setSelectedIds([]);
+    } catch (error) {
+      setZipProgress(null);
+      setZipError(
+        error instanceof Error
+          ? error.message
+          : "The archive could not be created.",
+      );
+    }
+  };
 
   const setFilter = <K extends keyof DocumentSearchFilters>(
     field: K,
@@ -375,6 +468,19 @@ export default function DocumentSearchSection() {
             page={currentPage}
             pageCount={pageCount}
             isFetching={isFetching}
+            selectedIds={selectedIds}
+            downloadableIds={downloadableIds}
+            onToggleSelected={toggleSelected}
+            onSelectAll={() =>
+              setSelectedIds((current) =>
+                current.length === downloadableIds.length ? [] : downloadableIds,
+              )
+            }
+            onClearSelection={clearSelection}
+            isZipRunning={isZipRunning}
+            zipProgress={zipProgress}
+            zipError={zipError}
+            onDownloadZip={handleDownloadZip}
             onPrevious={() => setPage((previous) => Math.max(0, previous - 1))}
             onNext={() =>
               setPage((previous) => Math.min(pageCount - 1, previous + 1))
@@ -423,6 +529,15 @@ interface SearchResultsProps {
   page: number;
   pageCount: number;
   isFetching: boolean;
+  selectedIds: string[];
+  downloadableIds: string[];
+  onToggleSelected: (id: string) => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
+  isZipRunning: boolean;
+  zipProgress: { completed: number; total: number } | null;
+  zipError: string;
+  onDownloadZip: () => void;
   onPrevious: () => void;
   onNext: () => void;
 }
@@ -433,6 +548,15 @@ function SearchResults({
   page,
   pageCount,
   isFetching,
+  selectedIds,
+  downloadableIds,
+  onToggleSelected,
+  onSelectAll,
+  onClearSelection,
+  isZipRunning,
+  zipProgress,
+  zipError,
+  onDownloadZip,
   onPrevious,
   onNext,
 }: SearchResultsProps) {
@@ -452,6 +576,11 @@ function SearchResults({
   const lastShown = page * PAGE_SIZE + documents.length;
   const isFirstPage = page === 0;
   const isLastPage = page >= pageCount - 1;
+
+  const selectedCount = selectedIds.length;
+  const hasSelection = selectedCount > 0;
+  const allSelected =
+    downloadableIds.length > 0 && selectedCount === downloadableIds.length;
 
   return (
     <div ref={resultsRef} className="scroll-mt-20">
@@ -475,6 +604,74 @@ function SearchResults({
         />
       </div>
 
+      {/* Selection toolbar. Only present once something is selected, so the
+          default view stays exactly as uncluttered as before. */}
+      {downloadableIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-white px-3.5 py-3 ring-1 ring-slate-900/[0.05]">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={onSelectAll}
+              className="size-4 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/30"
+            />
+            {allSelected ? "Clear selection" : "Select all on this page"}
+          </label>
+
+          <span className="text-xs text-slate-400">
+            {selectedCount} of {downloadableIds.length} selected
+          </span>
+
+          <div className="ml-auto flex items-center gap-2">
+            {hasSelection && (
+              <button
+                type="button"
+                onClick={onClearSelection}
+                disabled={isZipRunning}
+                className="text-xs font-semibold text-slate-500 transition hover:text-slate-700 disabled:opacity-50"
+              >
+                Clear
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onDownloadZip}
+              disabled={!hasSelection || isZipRunning}
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-3.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isZipRunning ? (
+                <>
+                  <LoaderCircle size={14} className="animate-spin" />
+                  Zipping {zipProgress?.completed}/{zipProgress?.total}
+                </>
+              ) : (
+                <>
+                  <FileArchive size={14} />
+                  Download as ZIP
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* A partial batch is still worth delivering, but the missing documents are
+          named rather than quietly dropped from the archive. */}
+      {zipError && (
+        <p
+          role="alert"
+          className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50/70 px-3.5 py-3 text-xs leading-5 text-amber-800 ring-1 ring-amber-900/[0.06]"
+        >
+          <AlertTriangle
+            size={14}
+            aria-hidden="true"
+            className="mt-px shrink-0"
+          />
+          <span>{zipError}</span>
+        </p>
+      )}
+
       <div
         role="region"
         aria-label="Search results"
@@ -488,6 +685,9 @@ function SearchResults({
             key={document.id}
             document={document}
             index={index}
+            isSelected={selectedIds.includes(document.id)}
+            canSelect={document.fileUrl.length > 0}
+            onToggleSelected={onToggleSelected}
           />
         ))}
       </div>
@@ -573,9 +773,15 @@ function fileTypeIcon(name: string, size: number, className?: string) {
 function SearchResultRow({
   document,
   index,
+  isSelected,
+  canSelect,
+  onToggleSelected,
 }: {
   document: DocumentSearchResult;
   index: number;
+  isSelected: boolean;
+  canSelect: boolean;
+  onToggleSelected: (id: string) => void;
 }) {
   // Named `category`, not `style`: this row also carries a `style` prop for the
   // entrance delay, and two things called `style` in one component is a trap.
@@ -607,7 +813,11 @@ function SearchResultRow({
       style={{
         animationDelay: `${Math.min(index, MAX_STAGGERED_ROWS) * ROW_STAGGER_MS}ms`,
       }}
-      className={`animate-result-in relative overflow-hidden rounded-2xl bg-white p-5 ring-1 ring-slate-900/[0.05] hover:ring-slate-900/[0.09] ${cardLift} ${spring} ${cardLiftHover}`}
+      className={`animate-result-in relative overflow-hidden rounded-2xl bg-white p-5 ring-1 transition ${
+          isSelected
+            ? "bg-indigo-50/40 ring-indigo-300/70"
+            : "bg-white ring-slate-900/[0.05] hover:ring-slate-900/[0.09]"
+        } ${cardLift} ${spring} ${cardLiftHover}`}
     >
       {/* Category accent, faded at both ends so it reads as a lit edge rather than
           a hard colour block. */}
@@ -617,6 +827,25 @@ function SearchResultRow({
       />
 
       <div className="flex items-start gap-4">
+        {/* Selection sits outside the identity column so the checkbox column stays
+            the same width whether or not a row has one. */}
+        <div className="flex shrink-0 items-center pl-0.5 pt-1">
+          {canSelect ? (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelected(document.id)}
+              aria-label={`Select ${fileName || "this document"}`}
+              className="size-4 cursor-pointer rounded border-slate-300 text-indigo-600 transition focus:ring-2 focus:ring-indigo-500/30"
+            />
+          ) : (
+            <span
+              className="block size-4"
+              title="This document has no file to download"
+            />
+          )}
+        </div>
+
         {/* Type block: the icon over its extension, tinted by file type so the
             kind of document is readable without parsing the filename. */}
         <div

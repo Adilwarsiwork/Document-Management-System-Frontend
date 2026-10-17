@@ -1,3 +1,4 @@
+import { zipSync } from "fflate";
 import {
   File,
   FileArchive,
@@ -5,6 +6,8 @@ import {
   FileText,
   FileType2,
 } from "lucide-react";
+
+import { uniqueZipEntryName } from "./zip-name.utils";
 
 const IMAGE_EXTENSIONS = [
   "png",
@@ -115,4 +118,107 @@ export async function downloadFile(
 
   // Released once the browser has had time to start the download.
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+}
+
+export interface ZipCandidate {
+  /** Stable identity used to match a failure back to the row it came from. */
+  id: string;
+  url: string;
+  fileName: string;
+}
+
+export interface ZipFailure {
+  id: string;
+  fileName: string;
+  reason: string;
+}
+
+export interface ZipResult {
+  /** Name of the archive that was written, or null when nothing was fetched. */
+  archiveName: string | null;
+  /** Rows whose bytes could not be read, so they are never silently dropped. */
+  failures: ZipFailure[];
+}
+
+export interface ZipProgress {
+  completed: number;
+  total: number;
+}
+
+/**
+ * Fetches each file and streams it into one archive.
+ *
+ * Files are added as they arrive rather than all at once, so ten small documents
+ * do not wait on the slowest one before the download can start. `onProgress`
+ * reports per-file completion so the caller can show live feedback.
+ *
+ * A file that cannot be read is reported and skipped: the rest of the archive is
+ * still worth delivering, and the caller is told exactly what is missing.
+ */
+export async function downloadFilesAsZip(
+  candidates: ZipCandidate[],
+  onProgress?: (progress: ZipProgress) => void,
+): Promise<ZipResult> {
+  if (candidates.length === 0) {
+    return { archiveName: null, failures: [] };
+  }
+
+  const usedNames = new Map<string, string>();
+  const failures: ZipFailure[] = [];
+
+  // `level: 0` stores the bytes uncompressed. The documents here are already
+  // compressed formats (PDF, JPEG, XLSX), so deflating them would burn CPU to
+  // save nothing measurable. Keyed by entry name, which is how zipSync names
+  // files inside the archive.
+  const entries: Record<string, Uint8Array> = {};
+
+  // Fetched sequentially on purpose. Reading ten large documents at once means
+  // holding ten blobs in memory together, which is what makes tabs fall over.
+  for (const [index, candidate] of candidates.entries()) {
+    try {
+      const response = await fetch(toReadableFileUrl(candidate.url));
+
+      if (!response.ok) {
+        throw new Error(`The request failed with status ${response.status}.`);
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      entries[uniqueZipEntryName(candidate.fileName, usedNames)] =
+        new Uint8Array(buffer);
+    } catch (error) {
+      failures.push({
+        id: candidate.id,
+        fileName: candidate.fileName,
+        reason:
+          error instanceof Error ? error.message : "The file could not be read.",
+      });
+    }
+
+    onProgress?.({ completed: index + 1, total: candidates.length });
+  }
+
+  // Nothing was readable, so there is no archive worth offering.
+  const entryCount = Object.keys(entries).length;
+
+  if (entryCount === 0) {
+    return { archiveName: null, failures };
+  }
+
+  const archiveName = `documents-${entryCount}.zip`;
+  const archive = zipSync(entries, { level: 0 });
+  const objectUrl = URL.createObjectURL(
+    new Blob([archive], { type: "application/zip" }),
+  );
+  const anchor = document.createElement("a");
+
+  anchor.href = objectUrl;
+  anchor.download = archiveName;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+
+  return { archiveName, failures };
 }
