@@ -30,9 +30,12 @@ export function formatDisplayDate(value: string): string {
   return `${day}-${month}-${year}`;
 }
 
-// 2024-02-26T16:14:33 -> "2 years ago"
-export function formatRelativeTime(value: string): string {
-  const timestamp = Date.parse(value?.trim() ?? "");
+// 2024-02-26T16:14:33 -> "2 years ago". Also accepts an epoch timestamp, so a
+// value that arrived as a number (a cache entry's `cachedAt`) needs no
+// conversion just to be formatted.
+export function formatRelativeTime(value: string | number): string {
+  const timestamp =
+    typeof value === "number" ? value : Date.parse(value?.trim() ?? "");
 
   if (!Number.isFinite(timestamp)) return "";
 

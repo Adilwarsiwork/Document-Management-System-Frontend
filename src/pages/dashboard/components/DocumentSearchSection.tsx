@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Check,
   ChevronLeft,
+  CloudOff,
   ChevronRight,
   Clock,
   Copy,
@@ -35,6 +36,7 @@ import { PAGE_SIZE } from "../api/document-search.api";
 import { MINOR_HEAD_OPTIONS } from "../constants/minor-head.constants";
 import { useDocumentTags } from "../hooks/useDocumentMetadata";
 import { useDocumentSearch } from "../hooks/useDocumentSearch";
+import { useIsOffline } from "../hooks/useIsOffline";
 import {
   formatDateTimeWithSeconds,
   formatDisplayDate,
@@ -134,6 +136,12 @@ export default function DocumentSearchSection() {
   // render just because `data?.documents ?? []` yields a fresh array.
   const documents = useMemo(() => data?.documents ?? [], [data]);
   const total = data?.total ?? 0;
+
+  // Rows restored from IndexedDB because the network was unreachable. These are
+  // never live, so they are labelled everywhere they appear.
+  const isShowingCache = data?.fromCache === true;
+  const cachedAt = data?.cachedAt ?? null;
+  const isOffline = useIsOffline();
   // The page the visible data belongs to; it lags the requested page while the
   // next one loads, so the label always matches what is on screen.
   const currentPage = data?.page ?? page;
@@ -283,6 +291,46 @@ export default function DocumentSearchSection() {
           </span>
         )}
       </div>
+
+      {/* Offline states. Cached rows look identical to live ones, so they are
+          always labelled and never presented as current. */}
+      {isShowingCache && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-200/70 bg-amber-50/80 px-5 py-3 sm:px-7">
+          <CloudOff size={15} aria-hidden="true" className="shrink-0 text-amber-600" />
+
+          <p className="text-xs leading-5 text-amber-900">
+            <span className="font-semibold">Showing saved results.</span>{" "}
+            {isOffline
+              ? "You are offline"
+              : "The server could not be reached"}{" "}
+            {cachedAt ? `— saved ${formatRelativeTime(cachedAt)}.` : "."}{" "}
+            Details may be out of date.
+          </p>
+
+          <button
+            type="button"
+            onClick={applySearch}
+            disabled={isFetching}
+            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-[11px] font-semibold text-amber-900 transition hover:bg-amber-200 disabled:opacity-50"
+          >
+            <RotateCcw
+              size={12}
+              aria-hidden="true"
+              className={isFetching ? "animate-spin" : undefined}
+            />
+            {isFetching ? "Retrying" : "Retry"}
+          </button>
+        </div>
+      )}
+
+      {!isShowingCache && isOffline && (
+        <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-100/80 px-5 py-2.5 sm:px-7">
+          <CloudOff size={14} aria-hidden="true" className="shrink-0 text-slate-500" />
+          <p className="text-xs text-slate-600">
+            You are offline. Search will resume when the connection returns.
+          </p>
+        </div>
+      )}
 
       <form
         onSubmit={handleSubmit}
