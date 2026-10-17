@@ -393,11 +393,11 @@ export default function FileUploadSection({
             </p>
           )}
 
-          <div className="mt-6 flex justify-end border-t border-slate-100 pt-5">
+          <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
             <button
               type="submit"
               disabled={isUploading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {isUploading && (
                 <LoaderCircle size={17} className="animate-spin" />

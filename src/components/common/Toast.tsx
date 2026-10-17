@@ -58,7 +58,7 @@ export default function Toast({ toast, onClose }: ToastProps) {
         // Errors interrupt, success updates quietly.
         role={isSuccess ? "status" : "alert"}
         aria-live={isSuccess ? "polite" : "assertive"}
-        className="animate-toast-in pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl shadow-slate-900/25 ring-1 ring-slate-900/5 sm:max-w-lg"
+        className="animate-toast-in pointer-events-auto relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl shadow-slate-900/25 ring-1 ring-slate-900/5 sm:max-w-lg"
       >
         <button
           type="button"
