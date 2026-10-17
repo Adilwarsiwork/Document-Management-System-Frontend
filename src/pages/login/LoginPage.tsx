@@ -1,13 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import LoginForm from "./components/LoginForm";
 import OtpForm from "./components/OtpForm";
+import {
+  clearSessionEndReason,
+  getSessionEndReason,
+} from "../../services/auth-session";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [mobile, setMobile] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  // Read through a lazy initializer rather than during render, so a second
+  // render pass cannot land on a different answer than the first.
+  const [timedOut] = useState(
+    () => getSessionEndReason() === "expired",
+  );
+
+  useEffect(() => {
+    // The reason describes how this visit began, so it is dropped afterwards
+    // and a reload lands on a plain login screen.
+    clearSessionEndReason();
+  }, []);
 
   return (
     <main className="flex min-h-dvh w-full items-center justify-center px-4 py-8 sm:py-10">
@@ -44,6 +59,15 @@ export default function LoginPage() {
               ? "Verify your mobile number to access your workspace."
               : "Enter your mobile number to receive a one-time password."}
           </p>
+
+          {timedOut && (
+            <p
+              role="status"
+              className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+            >
+              You were logged out after one hour. Log in again to continue.
+            </p>
+          )}
 
           {otpSent ? (
             <OtpForm

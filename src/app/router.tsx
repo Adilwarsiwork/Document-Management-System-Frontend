@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       {
-        // Login and register are reachable only while signed out.
+        // Login and register are reachable only while logged out.
         element: <GuestRoute />,
         children: [
           {

@@ -60,7 +60,7 @@ const FAILURE_HINTS: { pattern: RegExp; hint: string }[] = [
   },
   {
     pattern: /token|un-?author|forbidden|session|expired/i,
-    hint: "Your session has expired. Sign in again and retry the upload.",
+    hint: "Your session has expired. Log in again and retry the upload.",
   },
   {
     pattern: /user|permission|role|access/i,

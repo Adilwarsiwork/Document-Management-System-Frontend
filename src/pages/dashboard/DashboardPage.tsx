@@ -12,7 +12,7 @@ import DocumentSearchSection from "./components/DocumentSearchSection";
 import type { SelectedDocument } from "./types/document.types";
 
 import { uploadDocuments } from "./api/document-upload.api";
-import { clearAuthSession } from "../../services/auth-session";
+import { endAuthSession } from "../../services/auth-session";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function DashboardPage() {
     useState<DashboardSection>("upload");
 
   const handleLogout = useCallback(() => {
-    clearAuthSession();
+    endAuthSession("logout");
     navigate("/login", { replace: true });
   }, [navigate]);
 
