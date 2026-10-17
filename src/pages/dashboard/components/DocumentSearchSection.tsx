@@ -20,11 +20,10 @@ import {
   FolderTree,
   Hash,
   Link2,
+  ListOrdered,
   LoaderCircle,
-  MessageSquareText,
   RotateCcw,
   Search,
-  Tag,
   UserRound,
 } from "lucide-react";
 
@@ -41,6 +40,7 @@ import {
 } from "../utils/date.utils";
 import {
   categoryStyle,
+  fileTypeStyle,
   uploaderDisplay,
 } from "../utils/document-display.utils";
 import {
@@ -72,13 +72,32 @@ const inputClass =
 
 const labelClass = "text-sm font-medium text-slate-700";
 
-const pillClass =
-  "inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600";
+// Tags get a slightly heavier chip than the rest of the chrome, because they can
+// be the main reason someone ran the search.
+const tagClass =
+  "inline-flex items-center rounded-full bg-indigo-50/80 px-2.5 py-1 text-[11px] font-medium text-indigo-700 ring-1 ring-indigo-200/70 transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-indigo-100/80";
 
-// The raw key name sent by /searchDocumentEntry, kept on the fields that still
-// carry a label so the data stays traceable to the response.
+// The raw key name sent by /searchDocumentEntry, printed on every field so the
+// data on screen stays traceable to the response it came from.
 const fieldLabelClass =
-  "font-mono text-[10px] font-semibold tracking-wide text-slate-400";
+  "font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400";
+
+// Two stacked shadows — a tight contact shadow plus a wide, heavily diffused one —
+// so a lifted card keeps a believable edge against the page.
+const cardLift =
+  "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-10px_rgba(15,23,42,0.10)]";
+
+const cardLiftHover =
+  "hover:shadow-[0_2px_4px_rgba(15,23,42,0.05),0_24px_50px_-16px_rgba(79,70,229,0.20)]";
+
+// One spring-like curve for every state change inside a row, so nothing quietly
+// falls back to the browser's default easing.
+const spring = "transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]";
+
+// Row entrances are staggered by index. The tail is capped so the last row of a
+// long page is not left waiting.
+const ROW_STAGGER_MS = 45;
+const MAX_STAGGERED_ROWS = 8;
 
 export default function DocumentSearchSection() {
   const [filters, setFilters] = useState<DocumentSearchFilters>(EMPTY_FILTERS);
@@ -460,12 +479,16 @@ function SearchResults({
         role="region"
         aria-label="Search results"
         aria-busy={isFetching}
-        className={`space-y-2.5 rounded-2xl bg-slate-50/60 p-2.5 transition-opacity ${
+        className={`space-y-2.5 rounded-2xl bg-slate-50/60 p-2.5 transition-opacity duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isFetching ? "opacity-60" : ""
         }`}
       >
-        {documents.map((document) => (
-          <SearchResultRow key={document.id} document={document} />
+        {documents.map((document, index) => (
+          <SearchResultRow
+            key={document.id}
+            document={document}
+            index={index}
+          />
         ))}
       </div>
 
@@ -547,9 +570,18 @@ function fileTypeIcon(name: string, size: number, className?: string) {
   return <Icon size={size} className={className} aria-hidden="true" />;
 }
 
-function SearchResultRow({ document }: { document: DocumentSearchResult }) {
-  const style = categoryStyle(document.majorHead);
+function SearchResultRow({
+  document,
+  index,
+}: {
+  document: DocumentSearchResult;
+  index: number;
+}) {
+  // Named `category`, not `style`: this row also carries a `style` prop for the
+  // entrance delay, and two things called `style` in one component is a trap.
+  const category = categoryStyle(document.majorHead);
   const fileName = fileNameFromUrl(document.fileUrl);
+  const fileStyle = fileTypeStyle(fileName);
   const extension = fileExtensionFromName(fileName);
   const canOpen = document.fileUrl.length > 0;
   const uploader = uploaderDisplay(document.uploadedBy);
@@ -571,143 +603,196 @@ function SearchResultRow({ document }: { document: DocumentSearchResult }) {
   };
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/5">
+    <article
+      style={{
+        animationDelay: `${Math.min(index, MAX_STAGGERED_ROWS) * ROW_STAGGER_MS}ms`,
+      }}
+      className={`animate-result-in relative overflow-hidden rounded-2xl bg-white p-5 ring-1 ring-slate-900/[0.05] hover:ring-slate-900/[0.09] ${cardLift} ${spring} ${cardLiftHover}`}
+    >
+      {/* Category accent, faded at both ends so it reads as a lit edge rather than
+          a hard colour block. */}
       <span
         aria-hidden="true"
-        className={`absolute inset-y-0 left-0 w-1 ${style.bar}`}
+        className={`absolute inset-y-0 left-0 w-[3px] ${category.bar} [mask-image:linear-gradient(to_bottom,transparent,black_20%,black_80%,transparent)]`}
       />
 
-      <div className="flex flex-col gap-3.5 p-4 pl-5 sm:p-5 sm:pl-6">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 ring-1 ring-slate-900/5">
-            {fileTypeIcon(fileName, 20)}
-          </div>
+      <div className="flex items-start gap-4">
+        {/* Type block: the icon over its extension, tinted by file type so the
+            kind of document is readable without parsing the filename. */}
+        <div
+          className={`flex size-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl ring-1 ${fileStyle.tile} ${fileStyle.accent}`}
+        >
+          {fileTypeIcon(fileName, 22)}
 
-          <div className="min-w-0 flex-1">
-            <p className={fieldLabelClass}>document_id</p>
+          {extension && (
+            <span className="text-[9px] font-bold uppercase tracking-wide opacity-80">
+              {extension}
+            </span>
+          )}
+        </div>
 
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <IdBadge id={document.id} />
+        <div className="min-w-0 flex-1">
+          <h3
+            className="truncate text-base font-bold tracking-tight text-slate-900"
+            title={fileName || undefined}
+          >
+            {fileName || "Untitled document"}
+          </h3>
 
-              {extension && (
-                <span className={pillClass}>{extension.toUpperCase()}</span>
-              )}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <IdBadge id={document.id} />
 
-              {document.majorHead && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ${style.chip}`}
-                >
-                  <FolderTree size={11} aria-hidden="true" />
-                  {document.majorHead}
-                </span>
-              )}
-
-              {document.minorHead && (
-                <span className={pillClass}>
-                  <Tag size={11} aria-hidden="true" />
-                  {document.minorHead}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            {canOpen && (
-              <IconLink
-                href={document.fileUrl}
-                label="Open the file in a new tab"
-                title="Open in a new tab"
+            {/* major_head and minor_head are separate API keys, so they get
+                separate chips. The category is tinted by its own value and the
+                sub-category stays neutral, which keeps the two distinguishable
+                when several sit next to each other. */}
+            {document.majorHead && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${category.chip}`}
               >
-                <ExternalLink size={16} />
-              </IconLink>
+                <span
+                  className={`size-1.5 shrink-0 rounded-full ${category.bar}`}
+                />
+                {document.majorHead}
+              </span>
             )}
 
-            <DownloadButton
-              fileName={fileName}
-              isBusy={downloadStatus === "busy"}
-              disabled={!document.fileUrl}
-              onDownload={handleDownload}
-            />
+            {document.minorHead && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-900/[0.04]">
+                <FolderTree size={11} aria-hidden="true" />
+                {document.minorHead}
+              </span>
+            )}
           </div>
         </div>
 
-        {downloadStatus === "error" && (
-          <p
-            role="alert"
-            className="flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-xs font-medium leading-5 text-red-700"
-          >
-            <AlertTriangle
-              size={14}
-              aria-hidden="true"
-              className="mt-px shrink-0"
-            />
+        <div className="flex shrink-0 items-center gap-1.5">
+          {canOpen && (
+            <IconLink
+              href={document.fileUrl}
+              label="Open the file in a new tab"
+              title="Open in a new tab"
+            >
+              <ExternalLink size={16} />
+            </IconLink>
+          )}
 
-            <span>
-              This file could not be downloaded directly. Use Open to view or
-              save it.
-            </span>
-          </p>
+          <DownloadButton
+            fileName={fileName}
+            isBusy={downloadStatus === "busy"}
+            disabled={!document.fileUrl}
+            onDownload={handleDownload}
+          />
+        </div>
+      </div>
+
+      {/* Every field carries its API key, a formatted value and a plain-English
+          qualifier, so the same data answers "what", "when" and "how long ago".
+          One cell per key the endpoint returns. */}
+      <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Field
+          field="document_date"
+          icon={<CalendarDays size={13} />}
+          value={formatDisplayDate(document.documentDate) || "—"}
+          sub={formatRelativeTime(document.documentDate)}
+        />
+
+        <Field
+          field="upload_time"
+          icon={<Clock size={13} />}
+          value={formatDateTimeWithSeconds(document.uploadedAt) || "—"}
+          sub={formatRelativeTime(document.uploadedAt)}
+        />
+
+        <Field
+          field="uploaded_by"
+          icon={<UserRound size={13} />}
+          value={uploader.name}
+          sub={uploader.handle}
+        />
+
+        {/* Reported per row but describes the whole result set, so it reads the
+            same on every card. Rendered because it is part of the response, not
+            because it varies. */}
+        {typeof document.totalCount === "number" && (
+          <Field
+            field="total_count"
+            icon={<ListOrdered size={13} />}
+            value={document.totalCount.toLocaleString()}
+          />
         )}
+      </dl>
 
-        <dl className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          <MetaItem
-            field="document_date"
-            icon={<CalendarDays size={13} />}
-            value={formatDisplayDate(document.documentDate) || "—"}
-            sub={formatRelativeTime(document.documentDate)}
-          />
+      {document.tags.length > 0 && (
+        <div className="mt-4">
+          <p className={fieldLabelClass}>
+            tags ({document.tags.length})
+          </p>
 
-          <MetaItem
-            field="upload_time"
-            icon={<Clock size={13} />}
-            value={formatDateTimeWithSeconds(document.uploadedAt) || "—"}
-            sub={formatRelativeTime(document.uploadedAt)}
-          />
+          {/* Every tag is rendered; the block wraps rather than truncating. */}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {document.tags.map((tag) => (
+              <span key={tag} className={tagClass}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
-          <MetaItem
-            field="uploaded_by"
-            icon={<UserRound size={13} />}
-            value={uploader.name}
-            sub={uploader.handle}
-          />
-        </dl>
+      {document.remarks && (
+        <div className="mt-4 rounded-xl bg-amber-50/60 px-3.5 py-3 ring-1 ring-amber-900/[0.06]">
+          <p className={fieldLabelClass}>document_remarks</p>
 
-        <div className="flex gap-2.5 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2.5">
-          <MessageSquareText
+          <p className="mt-1.5 text-xs leading-5 text-slate-700">
+            {document.remarks}
+          </p>
+        </div>
+      )}
+
+      {document.fileUrl && (
+        <div className="group/url mt-3 flex items-center gap-2.5 rounded-xl bg-slate-50/80 px-3.5 py-3 ring-1 ring-slate-900/[0.04]">
+          <Link2
             size={14}
             aria-hidden="true"
-            className="mt-0.5 shrink-0 text-amber-500"
+            className="shrink-0 text-rose-500"
           />
 
-          <p className="min-w-0 flex-1 text-xs leading-5 text-slate-700">
-            {document.remarks || "—"}
+          <p
+            className="min-w-0 flex-1 truncate font-mono text-[11px] text-slate-500"
+            title={document.fileUrl}
+          >
+            {document.fileUrl}
           </p>
-        </div>
 
-        {document.fileUrl && (
-          <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50/60 px-3 py-2.5">
-            <Link2
-              size={14}
-              aria-hidden="true"
-              className="shrink-0 text-rose-500"
-            />
-
-            <p
-              className="min-w-0 flex-1 truncate font-mono text-[11px] text-slate-500"
-              title={document.fileUrl}
-            >
-              {document.fileUrl}
-            </p>
-
-            <CopyButton value={document.fileUrl} label="file URL" />
+          <span className="opacity-50 transition-opacity duration-300 group-hover/url:opacity-100 group-focus-within/url:opacity-100">
+              <CopyButton value={document.fileUrl} label="file URL" />
+            </span>
           </div>
-        )}
-      </div>
+      )}
+
+      {downloadStatus === "error" && (
+        <p
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-xl bg-red-50/70 px-3.5 py-3 text-xs font-medium leading-5 text-red-700 ring-1 ring-red-900/[0.06]"
+        >
+          <AlertTriangle
+            size={14}
+            aria-hidden="true"
+            className="mt-px shrink-0"
+          />
+
+          <span>
+            This file could not be downloaded directly. Use Open to view or save
+            it.
+          </span>
+        </p>
+      )}
     </article>
   );
 }
 
-interface MetaItemProps {
+interface FieldProps {
   /** The key exactly as it arrives from the API. */
   field: string;
   icon: ReactNode;
@@ -715,24 +800,28 @@ interface MetaItemProps {
   sub?: string;
 }
 
-function MetaItem({ field, icon, value, sub }: MetaItemProps) {
+function Field({ field, icon, value, sub }: FieldProps) {
+  // An empty field is normal, not an error. Naming the absence reads better than
+  // a lone dash, and keeps a gap in the data from looking like a rendering fault.
+  const isEmpty = value === "—" || value === "";
+
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200/70 bg-slate-50/60 px-3 py-2.5">
-      <dt className={`flex items-center gap-1 ${fieldLabelClass}`} title={field}>
+    <div className="min-w-0 rounded-xl bg-slate-50/70 px-3.5 py-3 ring-1 ring-slate-900/[0.04]">
+      <dt className={`flex items-center gap-1.5 ${fieldLabelClass}`} title={field}>
         {icon}
         {field}
       </dt>
 
       <dd
-        className="mt-1 truncate text-xs font-semibold text-slate-800"
-        title={typeof value === "string" ? value : undefined}
+        className={`mt-1.5 truncate text-xs font-semibold ${
+          isEmpty ? "text-slate-300" : "text-slate-800"
+        }`}
+        title={typeof value === "string" && !isEmpty ? value : undefined}
       >
-        {value}
+        {isEmpty ? "Not recorded" : value}
       </dd>
 
-      {sub && (
-        <p className="mt-0.5 truncate text-[11px] text-slate-400">{sub}</p>
-      )}
+      {sub && <p className="mt-0.5 truncate text-[11px] text-slate-400">{sub}</p>}
     </div>
   );
 }
@@ -755,9 +844,16 @@ function IconLink({
       rel="noreferrer"
       aria-label={label}
       title={title}
-      className="flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-4 focus-visible:ring-indigo-500/25"
+      className={`group flex size-10 items-center justify-center rounded-xl bg-slate-50 text-slate-500 ring-1 ring-slate-900/[0.05] ${spring} hover:bg-indigo-50 hover:text-indigo-700 hover:ring-indigo-300/60 active:scale-95 focus-visible:ring-4 focus-visible:ring-indigo-500/25`}
     >
-      {children}
+      {/* The glyph drifts and scales inside its own hit area, so the button reads
+          as pressed rather than simply recoloured. */}
+      <span
+        aria-hidden="true"
+        className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:scale-110"
+      >
+        {children}
+      </span>
     </a>
   );
 }
@@ -816,10 +912,12 @@ function CopyButton({
 // Prominent document id with an inline copy action.
 function IdBadge({ id }: { id: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-lg bg-slate-900 py-0.5 pl-2 pr-0.5 text-white">
-      <Hash size={11} aria-hidden="true" className="text-white/60" />
-      <span className="text-[11px] font-bold tabular-nums">{id}</span>
-      <CopyButton value={id} label="document ID" variant="dark" />
+    <span className="group/id inline-flex h-5 shrink-0 items-center gap-1 rounded-md bg-slate-900 px-1.5 text-white">
+      <Hash size={10} aria-hidden="true" className="text-white/50" />
+      <span className="text-[10px] font-bold tabular-nums">{id}</span>
+      <span className="opacity-50 transition-opacity duration-300 group-hover/id:opacity-100 group-focus-within/id:opacity-100">
+        <CopyButton value={id} label="document ID" variant="dark" />
+      </span>
     </span>
   );
 }
@@ -842,7 +940,7 @@ function DownloadButton({
       <span
         title="No file available"
         aria-hidden="true"
-        className="flex size-10 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-slate-100 text-slate-300"
+        className="flex size-8 shrink-0 cursor-not-allowed items-center justify-center rounded-lg text-slate-300 ring-1 ring-slate-900/[0.03]"
       >
         <Download size={17} />
       </span>
@@ -856,37 +954,55 @@ function DownloadButton({
       disabled={isBusy}
       aria-label={label}
       title={label}
-      className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-indigo-500/25"
+      className={`group flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 ring-1 ring-slate-900/[0.05] ${spring} hover:bg-indigo-50 hover:text-indigo-700 hover:ring-indigo-300/60 active:scale-95 disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-indigo-500/25`}
     >
-      {isBusy ? (
-        <LoaderCircle size={17} className="animate-spin" />
-      ) : (
-        <Download size={17} />
-      )}
+      <span
+        aria-hidden="true"
+        className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:scale-110"
+      >
+        {isBusy ? (
+          <LoaderCircle size={15} className="animate-spin" />
+        ) : (
+          <Download size={15} />
+        )}
+      </span>
     </button>
   );
 }
 
 function SearchSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {Array.from({ length: 5 }, (_, index) => (
         <div
           key={index}
-          className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4"
+          className="animate-pulse rounded-2xl bg-white p-5 ring-1 ring-slate-900/[0.05]"
         >
-          <div className="flex items-start gap-3">
-            <div className="size-11 shrink-0 rounded-xl bg-slate-200" />
+          {/* Mirrors the real card: type block, name, three field cells. */}
+          <div className="flex items-start gap-4">
+            <div className="size-14 shrink-0 rounded-2xl bg-slate-100" />
 
-            <div className="flex-1 space-y-2">
-              <div className="h-3.5 w-2/5 rounded bg-slate-200" />
-              <div className="h-3 w-3/5 rounded bg-slate-100" />
+            <div className="min-w-0 flex-1">
+              <div className="h-4 w-1/3 rounded-full bg-slate-100" />
+
+              <div className="mt-2 flex gap-2">
+                <div className="h-5 w-16 rounded bg-slate-100" />
+                <div className="h-5 w-28 rounded-full bg-slate-100/80" />
+              </div>
+            </div>
+
+            <div className="flex shrink-0 gap-1.5">
+              <div className="size-10 rounded-xl bg-slate-100" />
+              <div className="size-10 rounded-xl bg-slate-100" />
             </div>
           </div>
 
-          <div className="mt-3.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {Array.from({ length: 4 }, (_, cell) => (
-              <div key={cell} className="h-14 rounded-xl bg-slate-100" />
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }, (_, cell) => (
+              <div
+                key={cell}
+                className="h-[4.25rem] rounded-xl bg-slate-50"
+              />
             ))}
           </div>
         </div>

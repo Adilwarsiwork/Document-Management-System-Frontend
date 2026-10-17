@@ -24,6 +24,28 @@ const DATE_KEYS = ["document_date", "documentDate", "date"];
 const MAJOR_KEYS = ["major_head", "majorHead", "category"];
 const MINOR_KEYS = ["minor_head", "minorHead", "sub_category", "department"];
 const REMARK_KEYS = ["document_remarks", "documentRemarks", "remarks"];
+const TAG_KEYS = [
+  "tags",
+  "tag",
+  "tag_name",
+  "tag_names",
+  "tagNames",
+  "document_tags",
+  "documentTags",
+  "document_tag",
+  "tag_list",
+  "tagList",
+  "tags_data",
+];
+const TAG_NAME_KEYS = [
+  "tag_name",
+  "tagName",
+  "name",
+  "label",
+  "title",
+  "text",
+  "value",
+];
 const UPLOADER_KEYS = ["uploaded_by", "uploadedBy", "user_name", "created_by"];
 const UPLOAD_TIME_KEYS = ["upload_time", "uploadTime", "created_at"];
 const TOTAL_KEYS = ["recordsFiltered", "recordsTotal", "total", "count"];
@@ -59,11 +81,125 @@ function readCount(
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+// Trims, drops blanks and removes case-insensitive repeats, so a document that
+// repeats a tag never renders it twice.
+function uniqueTags(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const name = value.trim();
+
+    if (!name) continue;
+
+    const key = name.toLowerCase();
+
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    result.push(name);
+  }
+
+  return result;
+}
+
+function readTagNames(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return uniqueTags(
+      raw.map((entry) => {
+        if (typeof entry === "string") return entry;
+
+        if (entry && typeof entry === "object") {
+          const name = pick(entry as Record<string, unknown>, TAG_NAME_KEYS);
+
+          return typeof name === "string" ? name : "";
+        }
+
+        return "";
+      }),
+    );
+  }
+
+  // A tags field sent as one delimited string rather than a list.
+  if (typeof raw === "string") return uniqueTags(raw.split(/[\r\n,]+/));
+
+  return [];
+}
+
+function readTags(record: Record<string, unknown>): string[] {
+  for (const key of TAG_KEYS) {
+    const raw = record[key];
+
+    if (raw === undefined || raw === null || raw === "") continue;
+
+    const tags = readTagNames(raw);
+
+    if (tags.length > 0) return tags;
+  }
+
+  return [];
+}
+
+// A segment only counts as a tag if it is short and reads like a label rather
+// than a sentence. Two words is the ceiling because real tags such as
+// "Work Order" need it.
+const TAG_LIKE_MAX_LENGTH = 40;
+const TAG_LIKE_MAX_WORDS = 2;
+
+function looksLikeTag(value: string): boolean {
+  const trimmed = value.trim();
+
+  if (!trimmed) return false;
+  if (trimmed.length > TAG_LIKE_MAX_LENGTH) return false;
+  if (/[.!?;]$/.test(trimmed)) return false;
+
+  return trimmed.split(/\s+/).length <= TAG_LIKE_MAX_WORDS;
+}
+
+/**
+ * Recovers a tag list that the endpoint folded into the remarks field.
+ *
+ * The endpoint has been seen both to return tags in their own array and to
+ * flatten them into document_remarks as a delimited list, so both are handled:
+ *
+ * - Newlines are an unambiguous separator and are always trusted.
+ * - Commas and semicolons are only trusted when every resulting segment looks
+ *   like a tag, so a written remark containing a comma ("Signed by the board, on
+ *   the 4th") stays one remark instead of becoming two invented tags.
+ *
+ * The remaining risk is a remark that is genuinely two short phrases joined by a
+ * comma, which will still read as two tags. Tighten TAG_LIKE_MAX_WORDS to 1 if
+ * that turns up in real data.
+ */
+function splitRemarksIntoTags(remarks: string): string[] {
+  if (!remarks) return [];
+
+  if (remarks.includes("\n")) return uniqueTags(remarks.split(/\r?\n/));
+
+  const segments = remarks
+    .split(/[,;]/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  // A single segment is just the remark itself, not a one-item tag list.
+  if (segments.length < 2) return [];
+
+  return segments.every(looksLikeTag) ? uniqueTags(segments) : [];
+}
+
 function normalizeDocument(
   entry: unknown,
   index: number,
 ): DocumentSearchResult {
   const record = (entry ?? {}) as Record<string, unknown>;
+
+  const remarks = readText(record, REMARK_KEYS);
+  const explicitTags = readTags(record);
+
+  // Tags recovered from the remarks are rendered as chips, so the same text is
+  // not shown twice.
+  const recoveredTags =
+    explicitTags.length === 0 ? splitRemarksIntoTags(remarks) : [];
 
   return {
     id: readText(record, ID_KEYS) || `document-${index}`,
@@ -71,7 +207,8 @@ function normalizeDocument(
     documentDate: readText(record, DATE_KEYS),
     majorHead: readText(record, MAJOR_KEYS),
     minorHead: readText(record, MINOR_KEYS),
-    remarks: readText(record, REMARK_KEYS),
+    remarks: recoveredTags.length > 0 ? "" : remarks,
+    tags: explicitTags.length > 0 ? explicitTags : recoveredTags,
     uploadedBy: readText(record, UPLOADER_KEYS),
     uploadedAt: readText(record, UPLOAD_TIME_KEYS),
     totalCount: readCount(record, TOTAL_COUNT_KEYS),

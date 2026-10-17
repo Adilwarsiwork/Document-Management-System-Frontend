@@ -30,6 +30,10 @@ export interface DocumentSearchResult {
   majorHead: string;
   minorHead: string;
   remarks: string;
+  // A document can carry any number of tags. When the response has no `tags`
+  // field they are recovered from the remarks, which is why remarks is emptied
+  // in that case rather than shown twice.
+  tags: string[];
   uploadedBy: string;
   uploadedAt: string;
   totalCount?: number;
