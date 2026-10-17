@@ -842,17 +842,27 @@ function SearchResultRow({
   const [downloadStatus, setDownloadStatus] = useState<
     "idle" | "busy" | "error"
   >("idle");
+  const [downloadError, setDownloadError] = useState("");
 
   const handleDownload = async () => {
     if (!document.fileUrl || downloadStatus === "busy") return;
 
     setDownloadStatus("busy");
+    setDownloadError("");
 
     try {
       await downloadFile(document.fileUrl, fileName);
       setDownloadStatus("idle");
-    } catch {
+    } catch (error) {
       setDownloadStatus("error");
+      // Kept so the reason reaches the user. A bare network failure and an
+      // expired signed link need completely different responses, and one
+      // message for both leaves them guessing.
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "The file could not be downloaded.",
+      );
     }
   };
 
@@ -1060,8 +1070,8 @@ function SearchResultRow({
           />
 
           <span>
-            This file could not be downloaded directly. Use Open to view or save
-            it.
+            {downloadError ||
+              "This file could not be downloaded. Use Open to view or save it."}
           </span>
         </p>
       )}

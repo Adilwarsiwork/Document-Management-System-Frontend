@@ -73,21 +73,27 @@ export function getFileIcon(fileName: string) {
   return File;
 }
 
-// The storage bucket sends no CORS headers, so a browser cannot read a file it
-// requests directly. The dev server relays those requests (see the "/storage"
-// proxy in vite.config.ts), which makes the file same-origin. A deployed app
-// needs the bucket CORS rule in docs/s3-cors.json instead.
-const DEV_FILE_PROXY = "/storage";
+// The storage bucket sends no CORS headers for this app's origin, so a browser
+// cannot read a file it fetches directly. Both environments relay "/storage" to
+// the bucket server-side, which makes the request same-origin and sidesteps CORS
+// entirely:
+//
+// - development: the proxy in vite.config.ts
+// - production:  the "/storage/:path*" rewrite in vercel.json
+//
+// A deployment without one of those relays needs an equivalent route, or the
+// bucket CORS rule in docs/s3-cors.json listing the deployed origin.
+const FILE_PROXY_BASE = "/storage";
 
 export function toReadableFileUrl(url: string): string {
-  if (!import.meta.env.DEV || !/^https?:\/\//i.test(url ?? "")) return url;
+  if (!/^https?:\/\//i.test(url ?? "")) return url;
 
   try {
     const parsed = new URL(url);
 
     if (!parsed.hostname.endsWith(".amazonaws.com")) return url;
 
-    return `${DEV_FILE_PROXY}${parsed.pathname}${parsed.search}`;
+    return `${FILE_PROXY_BASE}${parsed.pathname}${parsed.search}`;
   } catch {
     return url;
   }
@@ -103,7 +109,21 @@ export async function downloadFile(
   const response = await fetch(toReadableFileUrl(url));
 
   if (!response.ok) {
-    throw new Error(`The file request failed with status ${response.status}.`);
+    // Signed links expire, which is the failure users hit most and the one a
+    // bare status code explains least.
+    if (response.status === 403) {
+      throw new Error(
+        "This link has expired. Run the search again to get a fresh one.",
+      );
+    }
+
+    if (response.status === 404) {
+      throw new Error("This file is no longer available.");
+    }
+
+    throw new Error(
+      `The file request failed with status ${response.status}.`,
+    );
   }
 
   const blob = await response.blob();
@@ -179,7 +199,11 @@ export async function downloadFilesAsZip(
       const response = await fetch(toReadableFileUrl(candidate.url));
 
       if (!response.ok) {
-        throw new Error(`The request failed with status ${response.status}.`);
+        throw new Error(
+          response.status === 403
+            ? "This link has expired."
+            : `The request failed with status ${response.status}.`,
+        );
       }
 
       const buffer = await response.arrayBuffer();
