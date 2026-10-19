@@ -8,13 +8,18 @@ import {
   getSessionEndReason,
 } from "../../services/auth-session";
 
+// How long the timeout notice stays on screen before it leaves on its own. Long
+// enough to be read and acted on, short enough that it stops pushing the form
+// down for the rest of the visit.
+const NOTICE_DURATION_MS = 15 * 1000;
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [mobile, setMobile] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   // Read through a lazy initializer rather than during render, so a second
   // render pass cannot land on a different answer than the first.
-  const [timedOut] = useState(
+  const [timedOut, setTimedOut] = useState(
     () => getSessionEndReason() === "expired",
   );
 
@@ -23,6 +28,20 @@ export default function LoginPage() {
     // and a reload lands on a plain login screen.
     clearSessionEndReason();
   }, []);
+
+  useEffect(() => {
+    if (!timedOut) return;
+
+    // The notice only explains why the visitor landed back here. Once they have
+    // seen it the form matters more than the explanation, so the timer is armed
+    // only while the notice is showing and is cleared on unmount.
+    const timer = window.setTimeout(
+      () => setTimedOut(false),
+      NOTICE_DURATION_MS,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [timedOut]);
 
   return (
     <main className="flex min-h-dvh w-full items-center justify-center px-4 py-8 sm:py-10">
