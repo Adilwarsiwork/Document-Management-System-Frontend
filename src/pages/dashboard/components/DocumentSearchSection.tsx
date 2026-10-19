@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -1257,43 +1258,126 @@ function DownloadButton({
   );
 }
 
+// The skeleton stands in for the real card, so it reserves the same cells the
+// data is about to occupy. Skipping one leaves a gap the real row then fills,
+// and the content jumps the moment results arrive.
+const SKELETON_ROWS = 5;
+const SKELETON_FIELDS = 4;
+
+// Each bar's highlight starts one step after the one before it, which is what
+// makes the sweep read as one movement across the page rather than a dozen
+// independent flickers. The row offset is capped so the last row is not still
+// waiting for its turn after the results have replaced it.
+const SKELETON_SHIMMER_STEP_MS = 60;
+const MAX_SKELETON_SHIMMED_ROWS = 4;
+
+// A custom property rather than `animationDelay` on the bar itself: the sweep
+// lives on the `::after` pseudo-element, which does not inherit animation
+// settings from its parent.
+function shimmerDelay(row: number, bar: number): CSSProperties {
+  const ms =
+    Math.min(row, MAX_SKELETON_SHIMMED_ROWS) * SKELETON_SHIMMER_STEP_MS * 2 +
+    bar * SKELETON_SHIMMER_STEP_MS;
+
+  return { "--shimmer-delay": `${ms}ms` } as CSSProperties;
+}
+
 function SearchSkeleton() {
   return (
-    <div className="space-y-2.5">
-      {Array.from({ length: 5 }, (_, index) => (
-        <div
-          key={index}
-          className="animate-pulse rounded-2xl bg-white p-5 ring-1 ring-slate-900/[0.05]"
+    // `role="status"` announces the wait once, on arrival, instead of leaving
+    // the search looking like an empty list that has finished with no matches.
+    <div role="status" aria-busy="true" className="space-y-2.5">
+      <span className="sr-only">Searching documents, please wait.</span>
+
+      {Array.from({ length: SKELETON_ROWS }, (_, row) => (
+        <article
+          key={row}
+          aria-hidden="true"
+          className="relative overflow-hidden rounded-2xl bg-white p-5 ring-1 ring-slate-900/[0.05]"
         >
-          {/* Mirrors the real card: type block, name, three field cells. */}
+          {/* The category accent that runs down the edge of a real card. */}
+          <span className="absolute inset-y-0 left-0 w-[3px] bg-slate-200" />
+
           <div className="flex items-start gap-4">
-            <div className="size-14 shrink-0 rounded-2xl bg-slate-100" />
+            <div className="flex shrink-0 items-center pl-0.5 pt-1">
+              <SkeletonBar
+                className="size-4 rounded"
+                delay={shimmerDelay(row, 0)}
+              />
+            </div>
+
+            <SkeletonBar
+              className="size-14 shrink-0 rounded-2xl"
+              delay={shimmerDelay(row, 1)}
+            />
 
             <div className="min-w-0 flex-1">
-              <div className="h-4 w-1/3 rounded-full bg-slate-100" />
+              <SkeletonBar
+                className="h-4 w-2/5 rounded-full"
+                delay={shimmerDelay(row, 2)}
+              />
 
-              <div className="mt-2 flex gap-2">
-                <div className="h-5 w-16 rounded bg-slate-100" />
-                <div className="h-5 w-28 rounded-full bg-slate-100/80" />
+              <div className="mt-2.5 flex items-center gap-2">
+                <SkeletonBar
+                  className="h-5 w-14 rounded-md"
+                  delay={shimmerDelay(row, 3)}
+                />
+                <SkeletonBar
+                  className="h-5 w-24 rounded-full"
+                  delay={shimmerDelay(row, 4)}
+                />
+                <SkeletonBar
+                  className="h-5 w-20 rounded-full"
+                  delay={shimmerDelay(row, 5)}
+                />
               </div>
             </div>
 
-            <div className="flex shrink-0 gap-1.5">
-              <div className="size-10 rounded-xl bg-slate-100" />
-              <div className="size-10 rounded-xl bg-slate-100" />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <SkeletonBar
+                className="size-10 rounded-xl"
+                delay={shimmerDelay(row, 6)}
+              />
+              <SkeletonBar
+                className="size-10 rounded-xl"
+                delay={shimmerDelay(row, 7)}
+              />
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }, (_, cell) => (
-              <div
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: SKELETON_FIELDS }, (_, cell) => (
+              <SkeletonBar
                 key={cell}
-                className="h-[4.25rem] rounded-xl bg-slate-50"
+                className="h-[4.25rem] rounded-xl"
+                delay={shimmerDelay(row, 8 + cell)}
               />
             ))}
           </div>
-        </div>
+
+          <SkeletonBar
+            className="mt-3 h-9 rounded-xl"
+            delay={shimmerDelay(row, 12)}
+          />
+        </article>
       ))}
     </div>
+  );
+}
+
+// One placeholder bar. The sweep and the delay both come from `.animate-skeleton`
+// in index.css, so every bar in the app animates identically.
+function SkeletonBar({
+  className,
+  delay,
+}: {
+  className: string;
+  delay: CSSProperties;
+}) {
+  return (
+    <div
+      style={delay}
+      className={`animate-skeleton bg-slate-200/80 ${className}`}
+    />
   );
 }

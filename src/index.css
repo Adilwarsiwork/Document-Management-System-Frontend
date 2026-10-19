@@ -98,6 +98,37 @@ button {
   }
 }
 
+/* A highlight travels the length of each bar. Pulsing the whole block instead,
+   as a single opacity cycle on the parent, moves every bar at once and reads as
+   a flat grey rectangle that happens to flicker. The per-bar delay is what turns
+   a page of separate bars into one diagonal sweep. */
+@keyframes skeleton-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.animate-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.9),
+    transparent
+  );
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .animate-toast-in {
     animation: toast-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -109,5 +140,13 @@ button {
 
   .animate-result-in {
     animation: result-in 700ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  /* The delay sits inside the shorthand on purpose. Declared on its own it
+     would be a separate declaration, and the shorthand in this same block would
+     reset it to zero, leaving every bar sweeping in unison. */
+  .animate-skeleton::after {
+    animation: skeleton-sweep 1.5s ease-in-out var(--shimmer-delay, 0ms)
+      infinite;
   }
 }
