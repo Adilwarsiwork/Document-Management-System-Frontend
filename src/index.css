@@ -112,6 +112,22 @@ button {
   }
 }
 
+/* A countdown digit falls into its box from above. The box clips the travel, so
+   the figure appears to drop out of the slot above and settle into place rather
+   than to fade in over it. Transform and opacity only, so a page of ticking
+   digits costs nothing to composite. */
+@keyframes session-digit-drop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -100%, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 .animate-skeleton {
   position: relative;
   overflow: hidden;
@@ -148,5 +164,9 @@ button {
   .animate-skeleton::after {
     animation: skeleton-sweep 1.5s ease-in-out var(--shimmer-delay, 0ms)
       infinite;
+  }
+
+  .animate-session-digit-drop {
+    animation: session-digit-drop 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
   }
 }

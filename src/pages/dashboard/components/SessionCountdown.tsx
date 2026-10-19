@@ -9,15 +9,19 @@ import { Clock3 } from "lucide-react";
  */
 
 // The session runs for an hour, so the clock spends most of its life green and
-// only warns as the deadline closes: amber across the quarter of an hour before
-// it, then red for the final five. Starting red or amber would leave the timer
-// shouting for most of the session and meaning nothing by the time it matters.
+// only warns as the deadline closes: amber across the last twenty minutes, then
+// red for the final five. Starting red or amber would leave the timer shouting
+// for most of the session and meaning nothing by the time it matters.
+//
+// Both are compared against the time still remaining, not the time elapsed, so
+// a steady threshold of twenty minutes is what keeps the clock green for the
+// first forty of the sixty.
 //
 // The steady tone is a true green rather than the emerald used by the
 // "workspace active" badge beside it. The two sit close enough in hue that a
 // pair of greens in one header reads as a single colour.
-const STEADY_THRESHOLD_SECONDS = 40 * 60;
-const URGENT_THRESHOLD_SECONDS = 25 * 60;
+const STEADY_THRESHOLD_SECONDS = 20 * 60;
+const URGENT_THRESHOLD_SECONDS = 5 * 60;
 
 type Tone = "steady" | "soon" | "urgent";
 
@@ -156,12 +160,22 @@ function TimeGroup({
       <div className="flex items-center gap-1">
         {digits.map((digit, index) => (
           <span
-            key={`${unit}-${index}`}
-            className={`flex items-center justify-center rounded-lg border font-bold tabular-nums transition-colors duration-300 ${
+            // Clips the digit's travel so the drop reads as a figure falling out
+            // of the slot above rather than as a fade over a moving glyph.
+            className={`flex items-center justify-center overflow-hidden rounded-lg border font-bold tabular-nums transition-colors duration-300 ${
               compact ? "size-5 text-xs" : "size-7 text-[15px]"
             } ${TONES[tone].digit}`}
           >
-            {digit}
+            {/* Keyed on the digit as well as its position, so the drop replays
+                on the tick that actually changed this box and stays still on
+                every other one. It fills the box, which is what makes -100%
+                equal a full box height and starts the figure clear of the lip. */}
+            <span
+              key={`${unit}-${index}-${digit}`}
+              className="flex h-full animate-session-digit-drop items-center"
+            >
+              {digit}
+            </span>
           </span>
         ))}
       </div>
