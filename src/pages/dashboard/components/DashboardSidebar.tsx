@@ -9,12 +9,16 @@ import {
   X,
 } from "lucide-react";
 
+import SessionCountdown from "./SessionCountdown";
+
 export type DashboardSection = "upload" | "search";
 
 interface DashboardSidebarProps {
   activeSection: DashboardSection;
   onSectionChange: (section: DashboardSection) => void;
   onLogout: () => void;
+  /** Seconds left in the session, read once by the page for both headers. */
+  sessionSeconds: number | null;
 }
 
 const navigation = [
@@ -32,6 +36,7 @@ export default function DashboardSidebar({
   activeSection,
   onSectionChange,
   onLogout,
+  sessionSeconds,
 }: DashboardSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -106,16 +111,27 @@ export default function DashboardSidebar({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMobileOpen((open) => !open)}
-          aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
-          aria-expanded={mobileOpen}
-          aria-controls="dashboard-sidebar"
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 active:bg-slate-100 focus-visible:ring-4 focus-visible:ring-indigo-500/25"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {/* The desktop header is hidden on this breakpoint, so the mobile bar
+            carries the clock instead and the timer is never missing.
+
+            The clock and the menu button travel together as one group. Left as
+            three siblings under `justify-between`, the bar would push the timer
+            out into the leftover space and leave it stranded in the middle
+            instead of parked beside the button it belongs with. */}
+        <div className="flex shrink-0 items-center gap-2">
+          <SessionCountdown seconds={sessionSeconds} compact />
+
+          <button
+            type="button"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={mobileOpen}
+            aria-controls="dashboard-sidebar"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 active:bg-slate-100 focus-visible:ring-4 focus-visible:ring-indigo-500/25"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Tapping the dimmed page closes the drawer. */}

@@ -9,6 +9,8 @@ import DashboardHeader from "./components/DashboardHeader";
 import FileUploadSection from "./components/FileUploadSection";
 import DocumentSearchSection from "./components/DocumentSearchSection";
 
+import { useSessionCountdown } from "./hooks/useSessionCountdown";
+
 import type { SelectedDocument } from "./types/document.types";
 
 import { uploadDocuments } from "./api/document-upload.api";
@@ -20,6 +22,11 @@ export default function DashboardPage() {
   const [files, setFiles] = useState<SelectedDocument[]>([]);
   const [activeSection, setActiveSection] =
     useState<DashboardSection>("upload");
+
+  // The desktop and mobile headers are both mounted at once and only one is
+  // visible at a time, so the clock is read here and handed to each of them
+  // rather than run twice.
+  const sessionSeconds = useSessionCountdown();
 
   const handleLogout = useCallback(() => {
     endAuthSession("logout");
@@ -61,10 +68,11 @@ export default function DashboardPage() {
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         onLogout={handleLogout}
+        sessionSeconds={sessionSeconds}
       />
 
       <div className="min-w-0 flex-1">
-        <DashboardHeader />
+        <DashboardHeader sessionSeconds={sessionSeconds} />
 
         <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-7 sm:px-6 sm:py-7 lg:px-8 lg:py-9">
           <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">

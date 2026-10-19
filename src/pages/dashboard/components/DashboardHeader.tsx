@@ -1,13 +1,21 @@
 import { getAuthRoles, getAuthUserName } from "../../../services/auth-session";
+import SessionCountdown from "./SessionCountdown";
 
-export default function DashboardHeader() {
+interface DashboardHeaderProps {
+  /** Seconds left in the session, read once by the page for both headers. */
+  sessionSeconds: number | null;
+}
+
+export default function DashboardHeader({
+  sessionSeconds,
+}: DashboardHeaderProps) {
   const userName = getAuthUserName();
   const roleName = getAuthRoles()[0]?.role ?? "";
   const displayName = userName || "My workspace";
   const initial = displayName.trim().charAt(0).toUpperCase() || "U";
 
   return (
-    <header className="hidden h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 md:flex">
+    <header className="hidden h-20 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 md:flex">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-slate-800">
           Document workspace
@@ -18,9 +26,8 @@ export default function DashboardHeader() {
       </div>
 
       <div className="flex shrink-0 items-center gap-3 sm:gap-5">
-        <div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 xl:flex">
-          <span className="size-2 rounded-full bg-emerald-500" />
-          Workspace active
+        <div className="border-l border-slate-200 pl-3 sm:pl-5">
+          <SessionCountdown seconds={sessionSeconds} />
         </div>
 
         <div className="flex items-center gap-3 border-l border-slate-200 pl-3 sm:pl-5">
