@@ -126,7 +126,14 @@ export default function DocumentSearchSection() {
     data: existingTags = [],
     isLoading: isLoadingTags,
     isError: tagsError,
+    error: tagsErrorValue,
   } = useDocumentTags();
+
+  // The real reason the tag list failed, not a generic "could not load".
+  const tagErrorHint = getApiErrorMessage(
+    tagsErrorValue,
+    "Could not load existing tags. You can still type your own tags.",
+  );
 
   const { data, isFetching, isError, error } = useDocumentSearch(
     appliedFilters,
@@ -395,6 +402,7 @@ export default function DocumentSearchSection() {
                 existingTags={existingTags}
                 isLoading={isLoadingTags}
                 isError={tagsError}
+                errorHint={tagErrorHint}
                 placeholder="Type a tag and press Enter..."
               />
             </div>

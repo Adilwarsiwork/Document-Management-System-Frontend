@@ -18,6 +18,7 @@ interface DocumentMetadataFieldsProps {
   existingTags: DocumentTag[];
   isLoadingTags: boolean;
   tagsError: boolean;
+  tagsErrorHint?: string;
   disabled?: boolean;
 }
 
@@ -32,6 +33,7 @@ export default function DocumentMetadataFields({
   existingTags,
   isLoadingTags,
   tagsError,
+  tagsErrorHint,
   disabled = false,
 }: DocumentMetadataFieldsProps) {
   const minorHeads = MINOR_HEAD_OPTIONS[value.major_head] ?? [];
@@ -170,6 +172,7 @@ export default function DocumentMetadataFields({
               existingTags={existingTags}
               isLoading={isLoadingTags}
               isError={tagsError}
+              errorHint={tagsErrorHint}
               disabled={disabled}
             />
           </div>

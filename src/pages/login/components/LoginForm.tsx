@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ShieldCheck, Smartphone } from "lucide-react";
 import { mobileSchema, type MobileFormValues } from "../schemas/auth.schema";
 import { useGenerateOtp } from "../hooks/useAuth";
+import { getApiErrorMessage } from "../../../services/api-client";
+import InlineAlert from "../../../components/common/InlineAlert";
 
 interface Props {
   onOtpSent: (mobile: string) => void;
@@ -65,14 +67,12 @@ export default function LoginForm({ onOtpSent }: Props) {
       </div>
 
       {mutation.isError && (
-        <div
-          role="alert"
-          className="rounded-lg border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {mutation.error instanceof Error
-            ? mutation.error.message
-            : "Unable to send OTP. Please try again."}
-        </div>
+        <InlineAlert variant="error" title="Could not send the OTP">
+          {getApiErrorMessage(
+            mutation.error,
+            "Unable to send OTP. Please try again.",
+          )}
+        </InlineAlert>
       )}
 
       <button

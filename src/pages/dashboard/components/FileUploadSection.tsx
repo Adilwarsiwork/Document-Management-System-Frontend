@@ -20,6 +20,7 @@ import Toast, {
   type ToastMeta,
 } from "../../../components/common/Toast";
 import { UploadError } from "../api/document-upload.api";
+import { getApiErrorMessage } from "../../../services/api-client";
 import DocumentMetadataFields from "./DocumentMetadataFields";
 import FileValidationDialog from "./FileValidationDialog";
 
@@ -219,7 +220,14 @@ export default function FileUploadSection({
     data: existingTags = [],
     isLoading: isLoadingTags,
     isError: tagsError,
+    error: tagsErrorValue,
   } = useDocumentTags();
+
+  // The real reason the tag list failed, not a generic "could not load".
+  const tagErrorHint = getApiErrorMessage(
+    tagsErrorValue,
+    "Could not load existing tags. You can still type your own tags.",
+  );
 
   return (
     <>
@@ -381,6 +389,7 @@ export default function FileUploadSection({
             existingTags={existingTags}
             isLoadingTags={isLoadingTags}
             tagsError={tagsError}
+            tagsErrorHint={tagErrorHint}
             disabled={isUploading}
           />
 

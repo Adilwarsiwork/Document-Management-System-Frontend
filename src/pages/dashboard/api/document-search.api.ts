@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { apiClient } from "../../../services/api-client";
+import { ApiError, apiClient } from "../../../services/api-client";
 import { toApiTimestamp } from "../utils/date.utils";
 
 import type {
@@ -300,7 +300,10 @@ export async function searchDocuments(
     payload = response.data;
   } catch (error) {
     // A missing or expired token is the one failure the user can act on.
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
+    if (
+      (error instanceof ApiError && error.status === 401) ||
+      (axios.isAxiosError(error) && error.response?.status === 401)
+    ) {
       throw new Error(
         "Your session has expired. Log in again to search documents.",
         { cause: error },

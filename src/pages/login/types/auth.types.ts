@@ -9,6 +9,7 @@ export interface ValidateOtpRequest {
 
 export interface GenerateOtpResponse {
   status: boolean;
+  message?: string;
   data: string;
 }
 
@@ -21,6 +22,7 @@ export interface Role {
 
 export interface ValidateOtpResponse {
   status: boolean;
+  message?: string;
   data: {
     token: string;
     user_id: string;

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { apiClient } from "../../../services/api-client";
+import { ApiError, apiClient } from "../../../services/api-client";
 import { getAuthUserId } from "../../../services/auth-session";
 import { toApiDate } from "../utils/date.utils";
 import type { SelectedDocument } from "../types/document.types";
@@ -105,6 +105,25 @@ export class UploadError extends Error {
 
 const toUploadError = (error: unknown, file: File): UploadError => {
   if (error instanceof UploadError) return error;
+
+  if (error instanceof ApiError) {
+    if (error.isNetwork) {
+      return new UploadError(
+        error.code === "ECONNABORTED"
+          ? "The upload timed out before it finished."
+          : "Could not reach the server.",
+        {
+          hint: "Large files can take a while to transfer. Check your connection and try again.",
+          fileName: file.name,
+        },
+      );
+    }
+
+    return new UploadError(
+      error.message || `The server returned an error (HTTP ${error.status}).`,
+      { fileName: file.name, status: error.status },
+    );
+  }
 
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;

@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { otpSchema, type OtpFormValues } from "../schemas/auth.schema";
 import { useGenerateOtp, useValidateOtp } from "../hooks/useAuth";
 import { saveAuthSession } from "../../../services/auth-session";
+import { getApiErrorMessage } from "../../../services/api-client";
+import InlineAlert from "../../../components/common/InlineAlert";
 import type { ValidateOtpResponse } from "../types/auth.types";
 
 interface Props {
@@ -100,28 +102,34 @@ export default function OtpForm({ mobile, onBack, onAuthenticated }: Props) {
       </div>
 
       {mutation.isError && (
-        <p role="alert" className="text-sm text-red-600">
-          OTP verification failed. Please try again.
-        </p>
+        <InlineAlert variant="error" title="Verification failed">
+          {getApiErrorMessage(
+            mutation.error,
+            "OTP verification failed. Please try again.",
+          )}
+        </InlineAlert>
       )}
 
-      {mutation.isSuccess && !mutation.data.data?.token && (
-        <p role="alert" className="text-sm text-red-600">
-          The response did not contain a recognized token. Check the API
-          response format.
-        </p>
+      {mutation.isSuccess && !mutation.data?.data?.token && (
+        <InlineAlert variant="error" title="Verification failed">
+          {mutation.data?.message ||
+            "OTP verified but no session token was returned. Please try again."}
+        </InlineAlert>
       )}
 
       {resendMutation.isError && (
-        <p role="alert" className="text-sm text-red-600">
-          Unable to resend OTP. Please try again.
-        </p>
+        <InlineAlert variant="error" title="Could not resend the OTP">
+          {getApiErrorMessage(
+            resendMutation.error,
+            "Unable to resend OTP. Please try again.",
+          )}
+        </InlineAlert>
       )}
 
       {resendMutation.isSuccess && (
-        <p role="status" className="text-sm text-emerald-600">
-          OTP resend request completed.
-        </p>
+        <InlineAlert variant="success" title="OTP resent">
+          The one-time password was sent again.
+        </InlineAlert>
       )}
 
       <button
